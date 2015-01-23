@@ -118,8 +118,6 @@ class Task(object):
         self.name         = ds.get('name', None)
         self.tags         = [ 'all' ]
         self.register     = ds.get('register', None)
-        self.sudo         = utils.boolean(ds.get('sudo', play.sudo))
-        self.su           = utils.boolean(ds.get('su', play.su))
         self.environment  = ds.get('environment', {})
         self.role_name    = role_name
         self.no_log       = utils.boolean(ds.get('no_log', "false"))
@@ -134,6 +132,17 @@ class Task(object):
             self.module_vars['register']  = ds.get('register', None)
             self.until                    = ds.get('until')
             self.module_vars['until']     = self.until
+
+        # combine the default and module vars here for use in templating
+        all_vars = self.default_vars.copy()
+        all_vars = utils.combine_vars(all_vars, self.module_vars)
+
+        sudo = ds.get('sudo', play.sudo)
+        sudo = template.template_from_string(play.basedir, sudo, all_vars)
+        self.sudo         = utils.boolean(sudo)
+        su                = ds.get('su', play.su)
+        su                = template.template_from_string(play.basedir, su, all_vars)
+        self.su           = utils.boolean(su)
 
         # rather than simple key=value args on the options line, these represent structured data and the values
         # can be hashes and lists, not just scalars
@@ -207,10 +216,6 @@ class Task(object):
         self.when    = ds.get('when', None)
         self.changed_when = ds.get('changed_when', None)
         self.failed_when = ds.get('failed_when', None)
-
-        # combine the default and module vars here for use in templating
-        all_vars = self.default_vars.copy()
-        all_vars = utils.combine_vars(all_vars, self.module_vars)
 
         self.async_seconds = ds.get('async', 0)  # not async by default
         self.async_seconds = template.template_from_string(play.basedir, self.async_seconds, all_vars)
